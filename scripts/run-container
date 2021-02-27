@@ -57,7 +57,7 @@ sudo nixos-container start "$container_name"
 # FIXME cleanup must disable this rule
 sudo iptables -I INPUT -p tcp -s "$(nixos-container show-ip "$container_name")" --dport "$PORT" -j ACCEPT
 # FIXME machinectl bind doesn't work for some reason
-sudo mount --rbind "$container_homedir" "/var/lib/containers/$container_name/home/user"
+sudo mount -o rbind,uid=1000 "$container_homedir" "/var/lib/containers/$container_name/home/user"
 set +x
 
 
