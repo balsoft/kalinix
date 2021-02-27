@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+cleanup() {
+    set +x
+    kill $(jobs -p)
+    rm /tmp/waypipe-client.sock
+}
+
+trap cleanup EXIT
+
+repo="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )/.."
+flake="${SELF-$repo}"
+
+container_name="${CONTAINER-kalinix}"
+
+container_homedir="$HOME/kalinix/$container_name"
+
+mkdir -p "$container_homedir"
+
+if [[ "${CONNECTION-x}" == x ]]; then
+    case "$XDG_SESSION_TYPE" in
+        wayland) connection="wayland" ;;
+        x11) connection="x11" ;;
+        *) echo "Warning: unrecognized \$XDG_SESSION_TYPE $XDG_SESSION_TYPE and \$CONNECTION not set. Gussing x11"; connection=x11 ;;
+    esac
+else
+    connection="${CONNECTION}"
+fi
+
+if [[ "$connection" == "wayland" ]]; then
+    PORT=1337
+    waypipe client & sleep 1
+    # FIXME there must be a better way
+    socat TCP-LISTEN:1337,reuseaddr,fork UNIX-CONNECT:/tmp/waypipe-client.sock &
+elif [[ "$connection" == "x11" ]]; then
+    PORT=6000
+    socat TCP-LISTEN:6000,reuseaddr,fork UNIX-CONNECT:/tmp/.X11-unix/X0 &
+else
+    echo "Connection type $CONNECTION unsupported"
+    exit 1
+fi
+
+if nixos-container list | grep '^'"$container_name"'$' > /dev/null; then
+    set -x
+    # sudo nixos-container stop "$container_name"
+    sudo nixos-container update --flake "${flake}" "$container_name"
+else
+    set -x
+    sudo nixos-container create --flake "${flake}" "$container_name"
+fi
+
+sudo nixos-container start "$container_name"
+
+# FIXME this might be insecure
+# FIXME cleanup must disable this rule
+sudo iptables -I INPUT -p tcp -s "$(nixos-container show-ip "$container_name")" --dport "$PORT" -j ACCEPT
+# FIXME machinectl bind doesn't work for some reason
+sudo mount --rbind "$container_homedir" "/var/lib/containers/$container_name/home/user"
+set +x
+
+
+if [[ "$connection" == "wayland" ]]; then
+    set -x
+    sudo machinectl -E XDG_SESSION_TYPE=wayland -E GDK_BACKEND=wayland -E QT_QPA_PLATFORM=wayland-egl shell --uid=user "$container_name" /run/current-system/sw/bin/waypipe --login-shell server "$@"
+    set +x
+elif [[ "$connection" == "x11" ]]; then
+    set -x
+    sudo machinectl copy-to "$container_name" "$HOME/.Xauthority" /home/user/.Xauthority-tmp
+    sudo machinectl shell "$container_name" /run/current-system/sw/bin/mv /home/user/.Xauthority-tmp /home/user/.Xauthority
+    sudo machinectl shell "$container_name" /run/current-system/sw/bin/chown user:users /home/user/.Xauthority
+    sudo machinectl -E XDG_SESSION_TYPE=x11 -E GDK_BACKEND=x11 -E QT_QPA_PLATFORM=xcb shell --uid=user "$container_name"
+    set +x
+fi
+
+set +x

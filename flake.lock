@@ -1,0 +1,41 @@
+{
+  "nodes": {
+    "nixos-fhs-compat": {
+      "locked": {
+        "lastModified": 1614380280,
+        "narHash": "sha256-D+fgJ25woYVibCk8OgbPGh+p9bBwoloKAhFhWqRH43o=",
+        "owner": "balsoft",
+        "repo": "nixos-fhs-compat",
+        "rev": "950882321fce2e5cd9b96c8e71624c173fd3ad6d",
+        "type": "github"
+      },
+      "original": {
+        "owner": "balsoft",
+        "repo": "nixos-fhs-compat",
+        "type": "github"
+      }
+    },
+    "nixpkgs": {
+      "locked": {
+        "lastModified": 1614331273,
+        "narHash": "sha256-OCfUR6LNNK4baiox7rwiE/KJjdcqDbsHvdGLRKnCUGk=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "6d7128414cf2763ab14f31365c21c6cec3547dac",
+        "type": "github"
+      },
+      "original": {
+        "id": "nixpkgs",
+        "type": "indirect"
+      }
+    },
+    "root": {
+      "inputs": {
+        "nixos-fhs-compat": "nixos-fhs-compat",
+        "nixpkgs": "nixpkgs"
+      }
+    }
+  },
+  "root": "root",
+  "version": 7
+}
